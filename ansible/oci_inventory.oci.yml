@@ -1,0 +1,9 @@
+plugin: oracle.oci.oci
+ 
+# Optional fields to specify oci connection config:
+config_file: ~/.oci/config
+config_profile: DEFAULT
+
+groups:
+  control_plane: "'control' in display_name"
+  workers: "'worker' in display_name"

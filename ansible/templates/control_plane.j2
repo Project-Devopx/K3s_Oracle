@@ -1,0 +1,6 @@
+# This is a template for the K3s control plane configuration file.
+node-name: control-plane
+token: {{ k3s_token }}
+tls-san:
+  - {{ groups['control_plane'][0] }}
+write-kubeconfig-mode: "0644"

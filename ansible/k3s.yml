@@ -1,0 +1,68 @@
+---
+- name: Configure K3s Control Plane
+  hosts: control_plane
+  become: true
+  vars_files:
+    - vars/k3s_vars.yml
+  tasks:
+    - name: "Create K3s config directory"
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: "Create K3s config file"
+      ansible.builtin.template:
+        src: control_plane.j2
+        dest: /etc/rancher/k3s/config.yaml
+        mode: '0644'
+
+- name: "Install K3s on Control Plane"
+  hosts: control_plane
+  vars_files:
+    - vars/k3s_vars.yml
+  tasks:
+    - name: "Install K3s server"
+      ansible.builtin.shell:
+        cmd: "curl -sfL https://get.k3s.io | sh -"
+
+- name: "Install K3s on Workers"
+  hosts: workers
+  become: true
+  vars_files:
+    - vars/k3s_vars.yml
+  tasks:
+    - name: "Install K3s agent"
+      ansible.builtin.shell:
+        cmd: curl -sfL https://get.k3s.io | sh -
+      environment:
+        K3S_URL: "https://{{ hostvars[groups['control_plane'][0]]['private_ip'] }}:6443"
+        K3S_TOKEN: "{{ k3s_token }}"
+
+- name: "Uninstall Iptables"
+  hosts: control_plane:workers
+  become: true
+  tasks:
+    - name: "Uninstall iptables"
+      ansible.builtin.apt:
+        name: iptables
+        state: absent
+  
+- name: "Reboot Nodes"
+  hosts: control_plane:workers
+  become: true
+  tasks:
+    - name: "Reboot the node"
+      ansible.builtin.reboot:
+        test_command: uptime
+
+- name: "Copy K3s configuration from control plane to local machine"
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: "Fetch K3s configuration"
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ~/k3s_config/k3s.yaml
+        flat: true
+      
